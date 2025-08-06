@@ -148,23 +148,32 @@ app_license = "mit"
 # Scheduled Tasks
 # ---------------
 
+# For checking if the scheduled events run
 # scheduler_events = {
-# 	"all": [
-# 		"exchange_rate_sync.tasks.all"
-# 	],
-# 	"daily": [
-# 		"exchange_rate_sync.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"exchange_rate_sync.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"exchange_rate_sync.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"exchange_rate_sync.tasks.monthly"
-# 	],
+#     "cron": {
+#         "*/2 * * * *": ["exchange_rate_sync.tasks.daily.get_currency_exchange"],  # every 2 minutes
+#         "*/5 * * * *": ["exchange_rate_sync.tasks.monthly.delete_currency_exchange_monthly"], # every 5 minutes
+#      }
 # }
+
+
+scheduler_events = {
+# 	# "all": [
+# 	# 	"exchange_rate_sync.tasks.all"
+# 	# ],
+	"daily": [
+		"exchange_rate_sync.tasks.daily.get_currency_exchange"
+	],
+# 	# "hourly": [
+# 	# 	"exchange_rate_sync.tasks.hourly"
+# 	# ],
+# 	# "weekly": [
+# 	# 	"exchange_rate_sync.tasks.weekly"
+# 	# ],
+	"monthly": [
+		"exchange_rate_sync.tasks.monthly.delete_currency_exchange_monthly"
+	],
+}
 
 # Testing
 # -------
