@@ -2,12 +2,16 @@ import requests
 import frappe
 from frappe.utils import today
 import os
+from dotenv import load_dotenv
+import os
 
+# Load variables from .env file
+load_dotenv()
 
 
 def get_currency_exchange():
     URL = "https://api.exchangerate.host/live"  # This provides only 100 calls per month for the free tier
-    API_KEY="YOUR_API_KEY"
+    API_KEY=os.getenv("API_KEY_EXCHANGERATEHOST")
 
     base_currency = frappe.db.get_single_value('Exchange Rate Config', 'base_currency') # from single doctype
    
