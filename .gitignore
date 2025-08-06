@@ -2,7 +2,6 @@
 *.pyc
 *.egg-info
 *.swp
-.env
 tags
 node_modules
 __pycache__
