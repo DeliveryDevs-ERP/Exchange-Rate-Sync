@@ -5,29 +5,84 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "base_currency",
-  "update_exchange_rates"
+  "section_break_adxt",
+  "base_currency_list",
+  "section_break_nrwm",
+  "select_currency_to_add",
+  "add",
+  "column_break_bscj",
+  "select_currency_to_remove",
+  "remove",
+  "update_exchange_rates_section",
+  "select_base_currency",
+  "update"
  ],
  "fields": [
   {
-   "fieldname": "base_currency",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Base Currency",
-   "options": "Currency",
-   "reqd": 1
+   "fieldname": "section_break_adxt",
+   "fieldtype": "Section Break",
+   "label": "Add or Remove Base Currencies"
   },
   {
-   "fieldname": "update_exchange_rates",
-   "fieldtype": "Button",
+   "description": "Select Currecy Below And Retrieve Latest Exchange Rates",
+   "fieldname": "update_exchange_rates_section",
+   "fieldtype": "Section Break",
    "label": "Update Exchange Rates"
+  },
+  {
+   "fieldname": "select_base_currency",
+   "fieldtype": "Select",
+   "label": "Select Base Currency"
+  },
+  {
+   "fieldname": "update",
+   "fieldtype": "Button",
+   "label": "Update"
+  },
+  {
+   "fieldname": "base_currency_list",
+   "fieldtype": "Table",
+   "label": "Base Currency List",
+   "options": "Base Currency Grid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_nrwm",
+   "fieldtype": "Section Break",
+   "label": "Edit Base Currencies"
+  },
+  {
+   "fieldname": "select_currency_to_add",
+   "fieldtype": "Select",
+   "label": "Select Currency To Add",
+   "sort_options": 1
+  },
+  {
+   "fieldname": "add",
+   "fieldtype": "Button",
+   "label": "Add"
+  },
+  {
+   "fieldname": "column_break_bscj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "select_currency_to_remove",
+   "fieldtype": "Select",
+   "label": "Select Currency To Remove",
+   "sort_options": 1
+  },
+  {
+   "fieldname": "remove",
+   "fieldtype": "Button",
+   "label": "Remove"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-05 00:36:59.164576",
+ "modified": "2025-08-07 13:19:22.404158",
  "modified_by": "Administrator",
  "module": "Exchange Rate Sync",
  "name": "Exchange Rate Config",

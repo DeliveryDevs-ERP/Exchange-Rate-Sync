@@ -1,123 +1,272 @@
+
 import requests
 import frappe
 from frappe.utils import today
+import os
+from dotenv import load_dotenv
+import os
+import time
 
-# API_KEY = "799a708bb15c3d595f05e498483185ca"
-# BASE_CURRENCY = frappe.db.get_single_value('Global Defaults', 'default_currency')
-# URL = "https://api.exchangerate.host/live"
-
-# def get_daily_currency_exchange():
-#     # Get all enabled currencies except the base currency
-#     enabled_currencies = frappe.get_all(
-#         "Currency",
-#         filters={"enabled": 1},
-#         pluck="name"
-#     )
-
-#     target_currencies = [cur for cur in enabled_currencies if cur != BASE_CURRENCY]
-#     if not target_currencies:
-#         frappe.log_error("No enabled target currencies found", "Exchange Rate Sync")
-#         return
-
-#     # Prepare API params
-#     params = {
-#         "access_key": API_KEY,
-#         "source": BASE_CURRENCY,
-#         "currencies": ",".join(target_currencies)
-#     }
-
-#     response = requests.get(URL, params=params)
-
-#     if response.status_code != 200:
-#         frappe.log_error("Currency API failed", response.text)
-#         return
-
-#     data = response.json()
-#     quotes = data.get("quotes", {})
-
-#     for pair, rate in quotes.items():
-#         if not pair.startswith(BASE_CURRENCY):
-#             continue
-
-#         other_currency = pair.replace(BASE_CURRENCY, "")
-#         if not other_currency or rate == 0:
-#             continue
-
-#         # Insert BASE → OTHER
-#         doc1 = frappe.new_doc("Currency Exchange")
-#         doc1.date = today()
-#         doc1.from_currency = BASE_CURRENCY
-#         doc1.to_currency = other_currency
-#         doc1.exchange_rate = rate
-#         doc1.insert(ignore_permissions=True)
-
-#         # Insert OTHER → BASE
-#         doc2 = frappe.new_doc("Currency Exchange")
-#         doc2.date = today()
-#         doc2.from_currency = other_currency
-#         doc2.to_currency = BASE_CURRENCY
-#         doc2.exchange_rate = 1 / rate
-#         doc2.insert(ignore_permissions=True)
+# Load variables from .env file
+load_dotenv()
 
 
-# def delete_currency_exchange():
-#     try:
-#         frappe.db.delete("Currency Exchange")  # Replace with your Doctype
-#         frappe.db.commit()
-#         frappe.logger().info("Currency Exchange records deleted successfully.")
-#     except Exception as e:
-#         frappe.log_error(frappe.get_traceback(), "Monthly Currency Exchange Deletion Failed")
-
-
-
-
-API_KEY = "e6f2d248b1754c01b3848038255d1b14"
-BASE_CURRENCY = "USD"  # Fixed for openexchangerates.org API
-URL = "https://openexchangerates.org/api/latest.json"
-
-def get_daily_currency_exchange():
-    # Get all enabled currencies except USD
+def get_currency_exchange(curr):
+    URL = "https://api.exchangerate.host/live"
+    API_KEY = os.getenv("API_KEY_EXCHANGERATEHOST")
+    # Get enabled currencies (excluding base)
     enabled_currencies = frappe.get_all(
         "Currency",
         filters={"enabled": 1},
         pluck="name"
     )
-
-    target_currencies = [cur for cur in enabled_currencies if cur != BASE_CURRENCY]
-    if not target_currencies:
-        frappe.log_error("No enabled target currencies found", "Exchange Rate Sync (OXR)")
+    if not enabled_currencies:
+        frappe.log_error("No enabled currencies found", "Exchange Rate Sync")
         return
 
-    # Prepare params
-    params = {
-        "app_id": API_KEY,
-        "symbols": ",".join(target_currencies)
-    }
+    # Determine base currencies to process
+    if curr == "All":
+        doc = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
+        base_currencies = [row.currency for row in doc.base_currency_list]
+        if not base_currencies:
+            return
+    else:
+        base_currencies = [curr]
 
-    response = requests.get(URL, params=params)
-    if response.status_code != 200:
-        frappe.log_error("OXR API failed", response.text)
-        return
-
-    data = response.json()
-    rates = data.get("rates", {})
-
-    for to_currency, rate in rates.items():
-        if not rate or rate == 0:
+    for base_currency in base_currencies:
+        target_currencies = [c for c in enabled_currencies if c != base_currency]
+        if not target_currencies:
+            frappe.log_error(f"No target currencies for base {base_currency}", "Exchange Rate Sync")
             continue
 
-        # Insert USD → to_currency
-        doc1 = frappe.new_doc("Currency Exchange")
-        doc1.date = today()
-        doc1.from_currency = BASE_CURRENCY
-        doc1.to_currency = to_currency
-        doc1.exchange_rate = rate
-        doc1.insert(ignore_permissions=True)
+        # Prepare API params
+        params = {
+            "access_key": API_KEY,
+            "source": base_currency,
+            "currencies": ",".join(target_currencies)
+        }
 
-        # Insert to_currency → USD
-        doc2 = frappe.new_doc("Currency Exchange")
-        doc2.date = today()
-        doc2.from_currency = to_currency
-        doc2.to_currency = BASE_CURRENCY
-        doc2.exchange_rate = 1 / rate
-        doc2.insert(ignore_permissions=True)
+
+        response = requests.get(URL, params=params)
+        data = response.json()
+
+        if not data.get("success"):
+            frappe.log_error(f"API error for {base_currency}: {response.text}", "Exchange Rate Sync")
+            return False
+
+        quotes = data.get("quotes", {})
+        for pair, rate in quotes.items():
+            if not pair.startswith(base_currency) or rate == 0:
+                continue
+
+            to_currency = pair.replace(base_currency, "")
+
+            # Update or insert BASE → OTHER
+            doc1 = frappe.db.get_value("Currency Exchange", {
+                "date": today(),
+                "from_currency": base_currency,
+                "to_currency": to_currency
+            }, "name")
+            if doc1:
+                frappe.db.set_value("Currency Exchange", doc1, "exchange_rate", rate)
+                frappe.db.commit()
+
+            else:
+                new_doc1 = frappe.get_doc({
+                    "doctype": "Currency Exchange",
+                    "date": today(),
+                    "from_currency": base_currency,
+                    "to_currency": to_currency,
+                    "exchange_rate": rate
+                })
+                new_doc1.insert(ignore_permissions=True)
+                frappe.db.commit()
+
+            # Update or insert OTHER → BASE
+            reverse_doc = frappe.db.get_value("Currency Exchange", {
+                "date": today(),
+                "from_currency": to_currency,
+                "to_currency": base_currency
+            }, "name")
+
+            reverse_rate = round(1 / rate, 6)
+            if reverse_doc:
+                frappe.db.set_value("Currency Exchange", reverse_doc, "exchange_rate", reverse_rate)
+                frappe.db.commit()
+
+                print(reverse_doc)
+            else:
+                new_doc2 = frappe.get_doc({
+                    "doctype": "Currency Exchange",
+                    "date": today(),
+                    "from_currency": to_currency,
+                    "to_currency": base_currency,
+                    "exchange_rate": reverse_rate
+                })
+                new_doc2.insert(ignore_permissions=True)
+                frappe.db.commit()
+        if curr == "All":
+            time.sleep(1)
+
+    return True
+
+
+@frappe.whitelist()
+def get_all_currency_list():
+    currencies = frappe.get_all(
+        "Currency",
+        filters={"enabled": 1},
+        pluck="name"
+    )
+    return currencies
+
+@frappe.whitelist()
+def get_base_currency_list():
+    doc = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
+    return [row.currency for row in doc.base_currency_list]
+
+@frappe.whitelist()
+def update_exchange_rates(curr):
+    return get_currency_exchange(curr)
+
+
+
+@frappe.whitelist()
+def add_base_currency(curr):
+    doc = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
+
+    # Avoid duplicates
+    existing = [row.currency for row in doc.base_currency_list]
+    if curr in existing:
+        frappe.throw(f"{curr} already exists in the list.")
+
+    doc.append("base_currency_list", {
+        "currency": curr
+    })
+    doc.save()
+    frappe.db.commit()
+
+    return get_currency_exchange(curr)
+
+
+@frappe.whitelist()
+def remove_base_currency(curr):
+    pass
+
+    doc = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
+
+    if curr == "All":
+        # Clear all child table rows
+        doc.set("base_currency_list", [])
+    else:
+        # Remove only the row that matches the selected currency
+        for row in doc.base_currency_list:
+            if row.currency == curr:
+                doc.base_currency_list.remove(row)
+                break  # Exit after removing the first match
+
+    doc.save()
+    frappe.db.commit()
+
+
+
+# # The following block of code is for use with OpenExchangeRates API, which has limited features for free users
+
+# def get_currency_exchange(curr):
+#     import time
+
+#     URL = "https://openexchangerates.org/api/latest.json"
+#     API_KEY = os.getenv("API_KEY_OPENEXCHANGERATES")
+
+#     if not API_KEY:
+#         frappe.log_error("Missing API key for openexchangerates.org", "Exchange Rate Sync")
+#         return
+
+#     # Get all enabled currencies
+#     enabled_currencies = frappe.get_all(
+#         "Currency",
+#         filters={"enabled": 1},
+#         pluck="name"
+#     )
+#     if not enabled_currencies:
+#         frappe.log_error("No enabled currencies found", "Exchange Rate Sync")
+#         return
+
+#     # Determine base currencies
+#     if curr == "All":
+#         doc = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
+#         base_currencies = [row.currency for row in doc.base_currency_list]
+#         if not base_currencies:
+#             frappe.log_error("No base currencies configured", "Exchange Rate Sync")
+#             return
+#     else:
+#         base_currencies = [curr]
+
+#     for base_currency in base_currencies:
+
+#         target_currencies = [c for c in enabled_currencies if c != base_currency]
+#         if not target_currencies:
+#             continue
+
+#         # API call
+#         params = {
+#             "app_id": API_KEY,
+#             "base": base_currency,  # Only works for free tier if USD 
+#             "symbols": ",".join(target_currencies)
+#         }
+
+#         response = requests.get(URL, params=params)
+#         if response.status_code != 200:
+#             frappe.log_error(f"API failed for {base_currency}", response.text)
+#             return False
+
+#         data = response.json()
+#         rates = data.get("rates", {})
+
+#         for to_currency, rate in rates.items():
+#             if not rate or rate == 0:
+#                 continue
+
+#             # Update or insert BASE → OTHER
+#             doc1 = frappe.db.get_value("Currency Exchange", {
+#                 "date": today(),
+#                 "from_currency": base_currency,
+#                 "to_currency": to_currency
+#             }, "name")
+
+#             if doc1:
+#                 frappe.db.set_value("Currency Exchange", doc1, "exchange_rate", rate)
+#                 frappe.db.commit()
+#             else:
+#                 frappe.get_doc({
+#                     "doctype": "Currency Exchange",
+#                     "date": today(),
+#                     "from_currency": base_currency,
+#                     "to_currency": to_currency,
+#                     "exchange_rate": rate
+#                 }).insert(ignore_permissions=True)
+#                 frappe.db.commit()
+
+#             # Update or insert OTHER → BASE
+#             reverse_rate = round(1 / rate, 6)
+#             reverse_doc = frappe.db.get_value("Currency Exchange", {
+#                 "date": today(),
+#                 "from_currency": to_currency,
+#                 "to_currency": base_currency
+#             }, "name")
+
+#             if reverse_doc:
+#                 frappe.db.set_value("Currency Exchange", reverse_doc, "exchange_rate", reverse_rate)
+#                 frappe.db.commit()
+#             else:
+#                 frappe.get_doc({
+#                     "doctype": "Currency Exchange",
+#                     "date": today(),
+#                     "from_currency": to_currency,
+#                     "to_currency": base_currency,
+#                     "exchange_rate": reverse_rate
+#                 }).insert(ignore_permissions=True)
+#                 frappe.db.commit()
+#     return True
+
+

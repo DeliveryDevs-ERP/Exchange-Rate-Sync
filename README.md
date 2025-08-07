@@ -1,32 +1,20 @@
 # Exchange Rate Sync App for Frappe
+# Exchange Rate Sync
 
-This is a custom Frappe app that allows you to fetch and manage exchange rates via a third-party API and maintain up-to-date currency exchange data in your ERP system.
----
+**Exchange Rate Sync** is a custom Frappe app that automates the retrieval and management of currency exchange rates using the [exchangerate.host API](https://exchangerate.host/). It allows users to:
 
-## Purpose
+- Add base currencies for which exchange rates should be fetched.
+- Automatically sync daily exchange rates.
+- Update exchange rates manually.
+- Clean up old exchange rate records monthly.
 
-- Automatically fetch and insert daily exchange rates for enabled currencies in the **Currency Exchange** DocType.
-- Clean up old exchange rates monthly to keep your database light.
-- Requires no manual data entry.
+## 🔧 Features
 
----
-
-## How It Works
-
-### 1. `exchange_rate_config.js`
-- Allows user so select base currency.
-- Adds a button (`update_exchange_rates`) in the Exchange Rate Config Doctype
-- On click:
-  - Saves the form if dirty
-  - Calls the server-side method `get_currency_exchange_from_ui`
-  - Displays appropriate success or error message
-  - Also has an `after_save` hook that auto-fetches rates when saved (unless triggered from button)
-
-### 2. `daily.py` — Insert Daily Currency Exchange Rates
-
-- Fetches the **default base currency** from **Exchange Rate Config**.
-- Gets all **enabled currencies** from the `Currency` DocType.
-- Calls the external API ([exchangerate.host](https://exchangerate.host)) to get exchange rates for the enabled currencies.
+### 📅 Daily Exchange Rate Sync
+- A daily scheduled task (defined in `daily.py`) fetches exchange rates for all saved base currencies.
+- Only enabled currencies are considered as valid target currencies.
+- Exchange rates are fetched from exchangerate.host API.
+- Existing exchange rates for the same day are **updated**, not duplicated.
 - Inserts two-way exchange rates:
   - BASE → OTHER
   - OTHER → BASE
@@ -36,20 +24,31 @@ If the base currency is `PKR` and the rate for `PKRAED` is `0.0131`, the followi
 - PKR → AED at `0.0131`
 - AED → PKR at `1 / 0.0131`
 
----
-
-### 3. `monthly.py`
-- Defines `delete_currency_exchange_monthly` function
-- Deletes `Currency Exchange` records older than yesterday
-- Runs as a scheduled task
-> You can enhance this later to delete only old records instead of wiping all.
+### 🗑️ Monthly Cleanup
+- A monthly scheduled task (defined in `monthly.py`) deletes all currency exchange records **older than yesterday**, to avoid cluttering the database.
 
 ---
 
-##  Scheduled Jobs (hooks.py)
+## 🧾 Exchange Rate Config Doctype
 
-- [daily] - Inserts new exchange rates daily.
-- [monthly] - Deletes old records once a month.
+The `Exchange Rate Config` Doctype provides a user interface for managing base currencies and controlling exchange rate sync actions.
+
+### Fields:
+- **Exchange Rate List (Table):** Displays all base currencies currently being tracked.
+
+### Actions:
+- **Add:**  
+  Adds a new base currency to the Table. Automatically fetches and stores exchange rates for the selected base currency.
+  
+- **Remove:**  
+  Removes a base currency from the Table. Does **not** delete historical exchange rates for that currency.
+  
+- **Update:**  
+  Updates exchange rates for:
+  - A specific base currency selected from the dropdown.
+  - All saved base currencies by choosing `All` from the dropdown.
+
+---
 
 ##  Setup Instructions
 
@@ -66,12 +65,11 @@ bench --site your-site-name install-app exchange_rate_sync
 bench --site your-site-name set-config enable_scheduler 1
 bench enable-scheduler
 ```
-
 ---
 
-##  Supported APIs
+###  API Information
 
-###  exchangerate.host
+##  exchangerate.host
 
 - Flexible base currency support
 - 100 requests/month on free tier
@@ -80,11 +78,11 @@ bench enable-scheduler
   https://api.exchangerate.host/live?access_key=YOUR_KEY&source=PKR&currencies=AED,USD
   ```
 
-###  Optional: openexchangerates.org
+##  Optional: openexchangerates.org
 
 - Base currency is always **USD**
 - 1000 requests/month on free tier
-- Toggle by uncommenting the alternate code block in `daily.py`
+- Toggle by uncommenting the alternate code block in `daily.py` and `api.py`
 - Example API call:
   ```
   https://openexchangerates.org/api/latest.json?app_id=YOUR_KEY&symbols=AED,EUR
@@ -92,14 +90,13 @@ bench enable-scheduler
 
 ---
 
-##  Error Handling
+## Best Practices
 
-All major errors are logged to the Frappe error log:
+Always monitor API usage if using the free tier.
 
-- `"Exchange Rate Sync"`
-- `"Monthly Currency Exchange Deletion Failed"`
+Manually trigger updates using the Update button when needed.
 
----
+Review error logs for failed API calls (handled using frappe.log_error).
 
 ##  Directory Structure
 
@@ -111,6 +108,7 @@ exchange_rate_sync/
 │           └── exchange_rate_config/
 │               └── exchange_rate_config.js   # Frontend logic for saving new base currency and update button
 ├── tasks/
+│   └── api.py           # For calling backend functions in Exchange Rate Config doctype
 │   ├── daily.py         # Daily exchange rate update function
 │   └── monthly.py       # Monthly cleanup task
 ├── hooks.py             # Scheduler configuration 
@@ -119,9 +117,7 @@ exchange_rate_sync/
 
 ---
 
-
-
-
 ##  License
 
 MIT License
+
