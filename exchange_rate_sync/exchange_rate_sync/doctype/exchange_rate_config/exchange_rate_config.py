@@ -1,77 +1,123 @@
-# Copyright (c) 2025, DeliveryDevs  and contributors
 # For license information, please see license.txt
 
 import frappe
 from frappe.model.document import Document
+import requests
+
+
+
+ERROR_EXPLANATIONS = {
+    "invalid_app_id": "Invalid App ID provided. Please check your API Key.",
+    "missing_app_id": "No App ID provided. Please provide an API Key.",
+    "not_allowed": "This App ID does not have access to the requested feature.",
+    "access_restricted": "Access restricted due to overuse or account limits.",
+    "invalid_base": "The requested base currency is not supported.",
+    "not_found": "The requested API route or resource does not exist."
+}
 
 
 class ExchangeRateConfig(Document):
-    def before_insert(self):
-        if not self.api_provider:
-            self.api_provider = "openexchangerates.org"
-        if not self.from_currency_table:
-            self.append("from_currency_table", {
-                "from_currency": "USD"  
-            })
-        if not self.to_currency_table:
-            self.append("to_currency_table", {
-                "from_currency": ""  
-            })
-        self.from_currency_option = "N/A"
-        self.quota = "N/A"
-        self.plan = "N/A"
-        self.api_status = "Status not available. Please test connection first."
-        frappe.db.commit()
-    
+
     def validate(self):
-        # Read current values from both child tables
+        # Validate API key and auto-set from_currency_option based on plan
+        if self.api_key:
+            test_connection(self)
+
+        # Collect current values
         from_vals = [r.from_currency for r in self.from_currency_table]
         to_vals   = [r.to_currency for r in self.to_currency_table]
-        # Normalize and write back
-        write_child_table(self, "from_currency_table", from_vals, "from_currency")
-        write_child_table(self, "to_currency_table", to_vals, "to_currency")
+
+        # Decide final from-currency list based on option
+        option = (self.from_currency_option or "").strip()
+
+        if option == "USD Only":
+            final_from = ["USD"]                       # exactly one row, USD
+        elif option == "All Currencies":
+            final_from = normalize_list(from_vals)     # keep values, remove duplicates, uppercase
+        else:
+            final_from = []                            # empty in all other cases
+
+        # Decide final to-currency list based on API status
+        if (self.api_status or "").strip().lower() == "active":
+            final_to = normalize_list(to_vals)         # keep values, remove duplicates, uppercase
+        else:
+            final_to = []                              # empty if not active
+
+        # Write back
+        write_child_table(self, "from_currency_table", final_from, "from_currency")
+        write_child_table(self, "to_currency_table", final_to, "to_currency")
+
         frappe.db.commit()
-
-
-        
 
 
 def normalize_list(lst):
     """
-    If the list is empty or has only empty strings -> return ['']
-    Otherwise -> return the list with all empty strings removed and no duplicates (case-insensitive)
+    - Remove empties
+    - Deduplicate (case-insensitive)
+    - Normalize to uppercase (ISO currency style)
+    - Preserve first-seen order
     """
-    seen_lower = set()
-    cleaned = []
+    if not lst:
+        return []
 
+    seen = set()
+    cleaned = []
     for s in lst:
         if not isinstance(s, str):
             continue
-        val = s.strip()
-        if val and val.lower() not in seen_lower:
-            seen_lower.add(val.lower())
-            cleaned.append(val)
-
-    if not cleaned:
-        return [""]
-    else:
-        return cleaned
+        v = s.strip().upper()
+        if not v:
+            continue
+        if v not in seen:
+            seen.add(v)
+            cleaned.append(v)
+    return cleaned
 
 
 def write_child_table(doc: Document, table_attr: str, values: list[str], currency_field: str):
     """
-    Overwrites the child table with the normalized values:
-      - If normalized == [''] -> creates exactly one empty row
-      - Else -> one row per value, no empty rows
+    Overwrites the child table with the given values (assumed already normalized if needed).
+    No empty placeholder rows will be created.
     """
-    normalized = normalize_list(values)
+    doc.set(table_attr, [])  # Clear
+    for v in values:
+        doc.append(table_attr, {currency_field: v})
 
-    # Clear existing rows
-    doc.set(table_attr, [])
 
-    if normalized == [""]:
-        # One empty row
-        doc.append(table_attr, {currency_field: ""})
+def test_connection(doc):
+    if doc.enabled == 0:
+        return
+
+    url = f"https://openexchangerates.org/api/usage.json?app_id={doc.api_key}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json().get("data", {})
+
+        doc.connection_success = 1
+        doc.quota = data["plan"].get("quota", "N/A")
+        doc.plan = data["plan"].get("name", "N/A")
+        doc.api_status = data.get("status", "active")
+
+        # Set currency option from plan features
+        if data["plan"]["features"].get("base", False):
+            doc.from_currency_option = "All Currencies"
+        else:
+            doc.from_currency_option = "USD Only"
+
+        frappe.db.commit()
+        frappe.msgprint("Connection successful. Fields have been updated.")
+
+
     else:
-        for v in normalized:
-            doc.append(table_attr, {currency_field: v})
+        error_json = response.json()
+        error_code = error_json.get("message", "Unknown Error")
+        explanation = ERROR_EXPLANATIONS.get(error_code, "Unknown error. Please try again or contact support.")
+
+        doc.connection_success = 0
+        doc.quota = "N/A"
+        doc.plan = "N/A"
+        doc.api_status = f"{explanation}"
+        doc.from_currency_option = "N/A"
+        frappe.db.commit()
+        frappe.msgprint(f"Connection failed: {error_code} — {explanation}")

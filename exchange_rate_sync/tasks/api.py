@@ -5,6 +5,32 @@ from .daily import get_currency_exchange
 
 
 
+
+@frappe.whitelist()
+def get_api_usage_info(api_key):
+    """Fetch live API usage details from the selected provider"""
+    url = "https://openexchangerates.org/api/usage.json"
+    
+    try:
+        resp = requests.get(url, params={"app_id": api_key}, timeout=8)
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.exceptions.RequestException as e:
+        frappe.throw(f"Failed to fetch usage info: {str(e)}")
+
+    if data.get("status") != 200:
+        desc = data.get("description") or data.get("message") or "Unknown error."
+        frappe.throw(f"Failed to fetch usage info: {desc}")
+
+    usage = data.get("data", {}).get("usage", {})
+    return usage
+
+@frappe.whitelist()
+def get_currency_exchange_ui():
+    return get_currency_exchange()
+
+
+
 ERROR_EXPLANATIONS = {
     "invalid_app_id": "Invalid App ID provided. Please check your API Key.",
     "missing_app_id": "No App ID provided. Please provide an API Key.",
@@ -13,9 +39,8 @@ ERROR_EXPLANATIONS = {
     "invalid_base": "The requested base currency is not supported.",
     "not_found": "The requested API route or resource does not exist."
 }
-
 @frappe.whitelist()
-def test_connection():
+def test_connection_ui():
     doc = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
 
     url = f"https://openexchangerates.org/api/usage.json?app_id={doc.api_key}"
@@ -54,9 +79,6 @@ def test_connection():
         doc.plan = "N/A"
         doc.api_status = f"{explanation}"
         doc.from_currency_option = "N/A"
-        doc.set_onload("api_usage_info_visible", False)
-        doc.set_onload("from_currency_read_only", True)
-        doc.set_onload("to_currency_read_only", True)
         # Hide usage info button
         doc.save()
 
@@ -65,29 +87,5 @@ def test_connection():
         "error_code": error_code,
         "message": f"Connection failed: {error_code} — {explanation}"
         }
-
-
-@frappe.whitelist()
-def get_api_usage_info(api_key):
-    """Fetch live API usage details from the selected provider"""
-    url = "https://openexchangerates.org/api/usage.json"
-    
-    try:
-        resp = requests.get(url, params={"app_id": api_key}, timeout=8)
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.exceptions.RequestException as e:
-        frappe.throw(f"Failed to fetch usage info: {str(e)}")
-
-    if data.get("status") != 200:
-        desc = data.get("description") or data.get("message") or "Unknown error."
-        frappe.throw(f"Failed to fetch usage info: {desc}")
-
-    usage = data.get("data", {}).get("usage", {})
-    return usage
-
-@frappe.whitelist()
-def get_currency_exchange_ui():
-    return get_currency_exchange()
 
 

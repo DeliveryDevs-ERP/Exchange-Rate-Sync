@@ -7,26 +7,20 @@ frappe.ui.form.on('Exchange Rate Config', {
 
    onload: function(frm) {
     persist_ui_fields(frm);
+      if  (!frm.doc.api_provider){
+        frm.set_value("api_provider", "https://openexchangerates.org/");
+      }
   },
 
     refresh: function(frm) {
         persist_ui_fields(frm);
         toggle_fields_visibility(frm);
-        frm.add_custom_button(__('Test Connection'), function() {
-            if (!frm.doc.enabled) {
-                frappe.msgprint(__('Please enable first.'));
-                return;
-            }   
-            // test_connection()
-            // If the form is dirty, save it first
-            if (frm.is_dirty()) {
-                frm.save().then(() => test_connection());
-            } else {
-                test_connection();
-            }
-        });
+    frm.add_custom_button(__('Test Connection'), async () => {
+      await test_connection_button_action(frm);
+    });
+  },
 
-    },
+    
 
     // Trigger this function whenever the 'enable' checkbox changes
         enabled: function(frm) {
@@ -90,7 +84,7 @@ function toggle_fields_visibility(frm) {
 
 
     const isEnabled = !!frm.doc.enabled;
-    ['api_status', 'plan', 'quota', 'from_currency_option']
+    ['api_status', 'plan', 'quota', 'from_currency_option', 'from_currency_table', 'to_currency_table']
     .forEach(f => frm.set_df_property(f, "hidden", isEnabled ? 0 : 1));
     frm.set_df_property("api_key", "read_only", isEnabled ? 0 : 1);
     frm.set_df_property("api_key", "reqd", isEnabled ? 1 : 0);
@@ -100,22 +94,7 @@ function toggle_fields_visibility(frm) {
 }
 
 
-function test_connection() {
-    frappe.call({
-        method: 'exchange_rate_sync.tasks.api.test_connection',
-        callback: function(r) {
-            if (!r.exc && r.message) {
-                const result = r.message;
 
-                frappe.msgprint(result.message);
-
-                // Reload doc values
-                cur_frm.reload_doc();
-
-            }
-        }
-    });
-}
 
 function persist_ui_fields(frm) {
     const ok = cint(frm.doc.enabled) === 1 &&
@@ -124,13 +103,15 @@ function persist_ui_fields(frm) {
 
   frm.set_df_property('api_usage_info', 'hidden', ok ? 0 : 1);
   frm.set_df_property("to_currency_table", "read_only", ok ? 0 : 1);
-  // frm.set_df_property("update_exchange_rates", "hidden", ok ? 0 : 1);
+  frm.set_df_property("update_exchange_rates", "hidden", ok ? 0 : 1);
 
-  if (ok && frm.doc.from_currency_option === "USD Only") {
-  frm.set_df_property("from_currency_table", "read_only", 1);
-  } else if (ok && frm.doc.from_currency_option === "All Currencies") {
-  frm.set_df_property("from_currency_table", "read_only", 0);
-  }
+if (ok && frm.doc.from_currency_option === "All Currencies") {
+    // Editable only in this case
+    frm.set_df_property("from_currency_table", "read_only", 0);
+} else {
+    // Read-only for USD Only or any other case
+    frm.set_df_property("from_currency_table", "read_only", 1);
+}
 }
 
 function call_update_exchange_rates(frm) {
@@ -145,4 +126,66 @@ function call_update_exchange_rates(frm) {
             }
         }
     });
+}
+
+async function test_connection_button_action(frm) {
+  // Require enabled
+  if (!frm.doc.enabled) {
+    frappe.msgprint(__('Please enable first.'));
+    return;
+  }
+
+  // If the form is dirty → just save silently
+  if (frm.is_dirty()) {
+    await frm.save(); // no messages shown
+    return;
+  }
+
+  // Require API key
+  if (!frm.doc.api_key) {
+    frappe.msgprint(__('Please enter an API Key first.'));
+    return;
+  }
+
+  // Not dirty → call the server
+  frappe.call({
+    method: 'exchange_rate_sync.tasks.api.test_connection_ui',
+    freeze: true,
+    freeze_message: __('Testing connection...'),
+    args: {},
+
+    callback: (r) => {
+      const res = r.message || {};
+      if (res.status === 'success') {
+        frappe.msgprint({
+          title: __('Connection Successful'),
+          message: __(
+            `<b>Status:</b> ${res.status}<br>
+             <b>Message:</b> ${res.message || ''}<br>
+             <b>Base Enabled:</b> ${res.base_enabled ? 'Yes' : 'No'}`
+          ),
+          indicator: 'green'
+        });
+      } else {
+        frappe.msgprint({
+          title: __('Connection Failed'),
+          message: __(
+            `<b>Status:</b> ${res.status}<br>
+             <b>Error Code:</b> ${res.error_code || 'N/A'}<br>
+             <b>Message:</b> ${res.message || ''}`
+          ),
+          indicator: 'red'
+        });
+      }
+      frm.reload_doc();
+    },
+
+    error: () => {
+      frappe.msgprint({
+        title: __('Error'),
+        message: __('Server error while testing connection.'),
+        indicator: 'red'
+      });
+    }
+  });
 }

@@ -31,7 +31,7 @@
    "label": "Retrieve Latest Exchange Rates (Optional)"
   },
   {
-   "description": "Enter your API key, then click Test Connection above to verify.",
+   "description": "You can register for free and get an API key from \n<a href=\"https://openexchangerates.org/signup/free\" target=\"_blank\">Open Exchange Rates</a>.\n",
    "fieldname": "api_key",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -81,8 +81,7 @@
    "description": "Add the source currencies for which exchange rates are required.",
    "fieldname": "from_currency_table",
    "fieldtype": "Table",
-   "options": "From Currency Grid",
-   "read_only": 1
+   "options": "From Currency Grid"
   },
   {
    "description": "Add the target currencies into which conversions are needed.",
@@ -112,6 +111,7 @@
    "label": "Enabled"
   },
   {
+   "default": "https://openexchangerates.org/",
    "fieldname": "api_provider",
    "fieldtype": "Data",
    "label": "API Provider",
@@ -141,7 +141,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-12 08:05:49.635868",
+ "modified": "2025-08-12 12:53:09.508372",
  "modified_by": "Administrator",
  "module": "Exchange Rate Sync",
  "name": "Exchange Rate Config",
