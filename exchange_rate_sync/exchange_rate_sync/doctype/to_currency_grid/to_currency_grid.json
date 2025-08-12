@@ -1,17 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-08-06 15:24:40.870389",
+ "creation": "2025-08-10 16:27:02.968333",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "currency"
+  "to_currency"
  ],
  "fields": [
   {
-   "fieldname": "currency",
+   "fieldname": "to_currency",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "To Currency",
    "options": "Currency"
   }
  ],
@@ -19,10 +21,10 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-07 01:50:10.520376",
+ "modified": "2025-08-10 16:27:34.241709",
  "modified_by": "Administrator",
  "module": "Exchange Rate Sync",
- "name": "Base Currency Grid",
+ "name": "To Currency Grid",
  "owner": "Administrator",
  "permissions": [],
  "row_format": "Dynamic",

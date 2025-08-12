@@ -1,122 +1,148 @@
-// // Copyright (c) 2025, DeliveryDevs  and contributors
-// // For license information, please see license.txt
+// // // // Copyright (c) 2025, DeliveryDevs  and contributors
+// // // // For license information, please see license.txt
+
 
 
 frappe.ui.form.on('Exchange Rate Config', {
-    onload: function(frm) {
-        Promise.all([
-            frappe.call('exchange_rate_sync.tasks.api.get_base_currency_list'),
-            frappe.call('exchange_rate_sync.tasks.api.get_all_currency_list')
-        ])
-        .then(([baseRes, allRes]) => {
-            let base = Array.isArray(baseRes.message) ? baseRes.message : [];
-            let all = Array.isArray(allRes.message) ? allRes.message : [];
-            console.log(base.length)
-            // Find currencies not in base
-            let difference = all.filter(currency => !base.includes(currency));
-            frm.set_df_property('select_currency_to_add', 'options', difference);
-            frm.refresh_field('select_currency_to_add');
 
+   onload: function(frm) {
+    persist_ui_fields(frm);
+  },
 
-            base = base.filter(Boolean)
-            if (base.length > 0) {
-            base.unshift("All");
-            frm.set_df_property('select_base_currency', 'options', base);
-            frm.refresh_field('select_base_currency');
-            frm.set_value('select_base_currency', 'All');
-            frm.set_df_property('select_currency_to_remove', 'options', base);
-            frm.refresh_field('select_currency_to_remove');
-
-
-
-            } else {
-            frm.set_df_property('select_base_currency', 'options', []);
-            frm.refresh_field('select_base_currency');
-            frm.set_df_property('select_currency_to_remove', 'options', []);
-            frm.refresh_field('select_currency_to_remove');
-
-}
-        });
-    },
-
-
-    add: function(frm) {
-        let currency = frm.doc.select_currency_to_add;
-
-        if (!currency) {
-            frappe.msgprint("Please select a currency to add.");
-            return;
-        }
-
-        frappe.call({
-            method: 'exchange_rate_sync.tasks.api.add_base_currency',
-            args: {
-                curr: currency
-            },
-        callback: function(r) {
-                if (r.message === false) {
-                        frappe.msgprint({
-                            title: __('Error'),
-                            message: __('Some exchange rates could not be updated. Check Exchange Rate API settings/permissions.'),
-                            indicator: 'red'
-                        });
-                    } else {
-                        frappe.show_alert(`Exchange rates for ${currency} added successfully`);
-                        frm.reload_doc();   
-                                                
-                        }
-
-                }
-            }
-        );
-    },
-    remove: function(frm) {
-            let currency = frm.doc.select_currency_to_remove;
-
-            if (!currency) {
-                frappe.msgprint(__('Please select a currency to remove.'));
+    refresh: function(frm) {
+        persist_ui_fields(frm);
+        toggle_fields_visibility(frm);
+        frm.add_custom_button(__('Test Connection'), function() {
+            if (!frm.doc.enabled) {
+                frappe.msgprint(__('Please enable first.'));
                 return;
+            }   
+            // test_connection()
+            // If the form is dirty, save it first
+            if (frm.is_dirty()) {
+                frm.save().then(() => test_connection());
+            } else {
+                test_connection();
             }
+        });
 
-            frappe.call({
-                method: 'exchange_rate_sync.tasks.api.remove_base_currency',
-                args: {
-                    curr: currency
-                },
-                callback: function() {
-                       frappe.show_alert(`${currency} removed successfully`);
-                         frm.reload_doc();  
-                }
-            });
-        },
-
-    
-    update: function(frm) {
-        let currency = frm.doc.select_base_currency;
-
-        if (!currency) {
-            frappe.msgprint("Please select a currency to update.");
-            return;
-        }
-
-        frappe.call({
-            method: 'exchange_rate_sync.tasks.api.update_exchange_rates',
-            args: {
-                curr: currency
-            },
-        callback: function(r) {
-                if (r.message === false) {
-                        frappe.msgprint({
-                            title: __('Error'),
-                            message: __('Exchange rates could not be updated. Check Exchange Rate API settings/permissions.'),
-                            indicator: 'red'
-                        });
-                    } else {
-                        frappe.msgprint("Exchange rates updated successfully.");
-                    }
-
-                }
-            }
-        );
     },
-    })
+
+    // Trigger this function whenever the 'enable' checkbox changes
+        enabled: function(frm) {
+        // Call the function to control visibility based on 'enable' field
+        toggle_fields_visibility(frm);
+    },
+
+    api_usage_info: async function(frm) {
+    const is_valid = frm.doc.enabled && frm.doc.connection_success === 1;
+
+    if (!is_valid || frm.is_dirty()) {
+      frappe.msgprint(__('Please test the connection first.'));
+      return;
+    }
+
+    try {
+      const { message: usage = {} } = await frappe.call({
+        method: "exchange_rate_sync.tasks.api.get_api_usage_info",
+        args: { api_key: frm.doc.api_key },
+        freeze: true,
+        freeze_message: __("Fetching API usage..."),
+      });
+
+      frappe.msgprint({
+        title: __("API Usage Information"),
+        message: `
+          <div style="padding:8px 0;">
+            <strong>Requests:</strong> ${usage.requests ?? 0}<br>
+            <strong>Requests Quota:</strong> ${usage.requests_quota ?? 0}<br>
+            <strong>Requests Remaining:</strong> ${usage.requests_remaining ?? 0}<br>
+            <strong>Days Elapsed:</strong> ${usage.days_elapsed ?? 0}<br>
+            <strong>Days Remaining:</strong> ${usage.days_remaining ?? 0}<br>
+            <strong>Daily Average:</strong> ${usage.daily_average ?? 0}
+          </div>
+        `,
+        indicator: "blue",
+      });
+
+    } catch (error) {
+      frappe.msgprint({
+        title: __("Error"),
+        message: __("Invalid API Key or failed to fetch usage info."),
+        indicator: "red"
+      });
+      await frm.reload_doc();
+    }
+  }, 
+update_exchange_rates: function(frm) {
+    if (frm.is_dirty()) {
+      frappe.msgprint("Please save the document first.")
+    } else {
+        call_update_exchange_rates(frm);
+    }
+}
+});
+
+// Function to toggle the visibility of fields
+function toggle_fields_visibility(frm) {
+    // Unhide the fields when 'enable' is checked
+    persist_ui_fields(frm)
+
+
+    const isEnabled = !!frm.doc.enabled;
+    ['api_status', 'plan', 'quota', 'from_currency_option']
+    .forEach(f => frm.set_df_property(f, "hidden", isEnabled ? 0 : 1));
+    frm.set_df_property("api_key", "read_only", isEnabled ? 0 : 1);
+    frm.set_df_property("api_key", "reqd", isEnabled ? 1 : 0);
+ 
+    // Refresh the form after toggling visibility
+    frm.refresh_fields();
+}
+
+
+function test_connection() {
+    frappe.call({
+        method: 'exchange_rate_sync.tasks.api.test_connection',
+        callback: function(r) {
+            if (!r.exc && r.message) {
+                const result = r.message;
+
+                frappe.msgprint(result.message);
+
+                // Reload doc values
+                cur_frm.reload_doc();
+
+            }
+        }
+    });
+}
+
+function persist_ui_fields(frm) {
+    const ok = cint(frm.doc.enabled) === 1 &&
+    cint(frm.doc.connection_success) === 1;
+
+
+  frm.set_df_property('api_usage_info', 'hidden', ok ? 0 : 1);
+  frm.set_df_property("to_currency_table", "read_only", ok ? 0 : 1);
+  frm.set_df_property("update_exchange_rates", "hidden", ok ? 0 : 1);
+
+  if (ok && frm.doc.from_currency_option === "USD Only") {
+  frm.set_df_property("from_currency_table", "read_only", 1);
+  } else if (ok && frm.doc.from_currency_option === "All Currencies") {
+  frm.set_df_property("from_currency_table", "read_only", 0);
+  }
+}
+
+function call_update_exchange_rates(frm) {
+    frappe.call({
+        method: "exchange_rate_sync.tasks.api.get_currency_exchange_ui",
+        freeze: true,
+        freeze_message: __("Updating exchange rates..."),
+        callback: function(r) {
+            if (r.message) {
+                frappe.msgprint(r.message);
+                frm.reload_doc();
+            }
+        }
+    });
+}

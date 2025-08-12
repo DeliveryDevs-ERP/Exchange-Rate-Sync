@@ -5,84 +5,144 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_adxt",
-  "base_currency_list",
-  "section_break_nrwm",
-  "select_currency_to_add",
-  "add",
-  "column_break_bscj",
-  "select_currency_to_remove",
-  "remove",
+  "enabled",
+  "connection_success",
+  "section_break_oovm",
+  "api_provider",
+  "api_key",
+  "column_break_abwq",
+  "api_status",
+  "plan",
+  "quota",
+  "from_currency_option",
+  "api_usage_info",
+  "section_break_wybr",
+  "from_currency_table",
+  "column_break_cdcg",
+  "to_currency_table",
   "update_exchange_rates_section",
-  "select_base_currency",
-  "update"
+  "column_break_osxy",
+  "update_exchange_rates"
  ],
  "fields": [
   {
-   "fieldname": "section_break_adxt",
-   "fieldtype": "Section Break",
-   "label": "Add or Remove Base Currencies"
-  },
-  {
-   "description": "Select Currecy Below And Retrieve Latest Exchange Rates",
    "fieldname": "update_exchange_rates_section",
    "fieldtype": "Section Break",
-   "label": "Update Exchange Rates"
+   "label": "Retrieve Latest Exchange Rates (Optional)"
   },
   {
-   "fieldname": "select_base_currency",
-   "fieldtype": "Select",
-   "label": "Select Base Currency"
-  },
-  {
-   "fieldname": "update",
-   "fieldtype": "Button",
-   "label": "Update"
-  },
-  {
-   "fieldname": "base_currency_list",
-   "fieldtype": "Table",
-   "label": "Base Currency List",
-   "options": "Base Currency Grid",
+   "description": "Enter your API key, then click Test Connection above to verify.",
+   "fieldname": "api_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "API Key",
    "read_only": 1
   },
   {
-   "fieldname": "section_break_nrwm",
-   "fieldtype": "Section Break",
-   "label": "Edit Base Currencies"
-  },
-  {
-   "fieldname": "select_currency_to_add",
-   "fieldtype": "Select",
-   "label": "Select Currency To Add",
-   "sort_options": 1
-  },
-  {
-   "fieldname": "add",
-   "fieldtype": "Button",
-   "label": "Add"
-  },
-  {
-   "fieldname": "column_break_bscj",
+   "fieldname": "column_break_abwq",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "select_currency_to_remove",
-   "fieldtype": "Select",
-   "label": "Select Currency To Remove",
-   "sort_options": 1
+   "fieldname": "plan",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Plan",
+   "read_only": 1
   },
   {
-   "fieldname": "remove",
+   "fieldname": "quota",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Usage Quota",
+   "read_only": 1
+  },
+  {
+   "fieldname": "from_currency_option",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "From (Base) Currency Options",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_oovm",
+   "fieldtype": "Section Break",
+   "label": "API Details"
+  },
+  {
+   "fieldname": "section_break_wybr",
+   "fieldtype": "Section Break",
+   "label": "Add or Remove Currencies"
+  },
+  {
+   "fieldname": "column_break_cdcg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Add the source currencies for which exchange rates are required.",
+   "fieldname": "from_currency_table",
+   "fieldtype": "Table",
+   "options": "From Currency Grid",
+   "read_only": 1
+  },
+  {
+   "description": "Add the target currencies into which conversions are needed.",
+   "fieldname": "to_currency_table",
+   "fieldtype": "Table",
+   "options": "To Currency Grid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "update_exchange_rates",
    "fieldtype": "Button",
-   "label": "Remove"
+   "hidden": 1,
+   "label": "Update Exchange Rates",
+   "read_only": 1
+  },
+  {
+   "fieldname": "api_usage_info",
+   "fieldtype": "Button",
+   "hidden": 1,
+   "label": "API Usage Info",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Click Enabled to begin setting up and syncing exchange rates.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "api_provider",
+   "fieldtype": "Data",
+   "label": "API Provider",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "connection_success",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Connection Success",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_osxy",
+   "fieldtype": "Column Break",
+   "hidden": 1
+  },
+  {
+   "fieldname": "api_status",
+   "fieldtype": "Data",
+   "label": "API Status",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-07 13:19:22.404158",
+ "modified": "2025-08-12 06:24:06.320736",
  "modified_by": "Administrator",
  "module": "Exchange Rate Sync",
  "name": "Exchange Rate Config",

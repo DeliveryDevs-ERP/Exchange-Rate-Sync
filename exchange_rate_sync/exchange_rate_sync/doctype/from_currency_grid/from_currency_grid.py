@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class BaseCurrencyGrid(Document):
+class FromCurrencyGrid(Document):
 	pass
