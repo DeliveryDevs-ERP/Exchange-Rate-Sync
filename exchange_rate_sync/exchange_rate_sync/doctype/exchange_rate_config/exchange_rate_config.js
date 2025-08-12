@@ -124,7 +124,7 @@ function persist_ui_fields(frm) {
 
   frm.set_df_property('api_usage_info', 'hidden', ok ? 0 : 1);
   frm.set_df_property("to_currency_table", "read_only", ok ? 0 : 1);
-  frm.set_df_property("update_exchange_rates", "hidden", ok ? 0 : 1);
+  // frm.set_df_property("update_exchange_rates", "hidden", ok ? 0 : 1);
 
   if (ok && frm.doc.from_currency_option === "USD Only") {
   frm.set_df_property("from_currency_table", "read_only", 1);

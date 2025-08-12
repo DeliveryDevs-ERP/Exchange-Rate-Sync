@@ -95,8 +95,7 @@
    "fieldname": "update_exchange_rates",
    "fieldtype": "Button",
    "hidden": 1,
-   "label": "Update Exchange Rates",
-   "read_only": 1
+   "label": "Update Exchange Rates"
   },
   {
    "fieldname": "api_usage_info",
@@ -142,7 +141,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-12 06:24:06.320736",
+ "modified": "2025-08-12 08:05:49.635868",
  "modified_by": "Administrator",
  "module": "Exchange Rate Sync",
  "name": "Exchange Rate Config",

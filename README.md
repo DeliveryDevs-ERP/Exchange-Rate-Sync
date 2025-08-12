@@ -53,7 +53,7 @@ bench --site your-site-name install-app exchange_rate_sync
 ---
 
 ## Manual Update
-- Click **Update Exchange Rates** in the Exchange Rate Config DocType to fetch rates immediately.
+- Click **Update Exchange Rates** in the Exchange Rate Config DocType to fetch latest rates immediately. This button is hidden by default. To make it visible, edit the doctype and change the "hidden" property of this field.
 - The process uses the same logic as the automated sync but is triggered manually.
 
 ---
