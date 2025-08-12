@@ -53,7 +53,17 @@ def get_currency_exchange():
     except Exception as e:
         frappe.log_error("Exchange Rate Sync: Failed to load config", str(e))
         return "Failed to load Exchange Rate Config"
+    try:
+        cfg = frappe.get_doc("Exchange Rate Config", "Exchange Rate Config")
+    except Exception as e:
+        frappe.log_error("Exchange Rate Sync: Failed to load config", str(e))
+        return "Failed to load Exchange Rate Config"
 
+    # Run only if enabled
+    if cfg.enabled == 0:
+        frappe.log_error("Exchange Rate Sync", "sync not enabled")
+        return "Exchange rate sync is disabled in Exchange Rate Config"
+    
     api_key = (cfg.api_key or "").strip()
     if not api_key:
         frappe.log_error("Exchange Rate Sync", "Missing API key in Exchange Rate Config")

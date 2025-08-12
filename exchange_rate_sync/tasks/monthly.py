@@ -4,6 +4,10 @@ import frappe
 from frappe.utils import nowdate, add_days
 
 def delete_currency_exchange_monthly():
+    if frappe.get_doc("Exchange Rate Config", "Exchange Rate Config").enabled == 0:
+        frappe.log_error("Exchange Rate Sync", "sync not enabled")
+        return "Exchange rate sync is disabled in Exchange Rate Config"
+
     try:
         # Calculate the date before yesterday
         yesterday = add_days(nowdate(), -1)
