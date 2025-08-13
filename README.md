@@ -88,7 +88,7 @@ The form must not be dirty.
 With OXR Free, the base must be **USD**.  
 Use USD in the *From Currency* table or upgrade your OXR plan.
 
-### New rows in *To Currency* table default to PKR
+### New rows in *To Currency* table default to Global Currency Setting
 Remove any default on the child field or ensure your client script clears it  
 (project includes logic to manage grid behavior).
 
