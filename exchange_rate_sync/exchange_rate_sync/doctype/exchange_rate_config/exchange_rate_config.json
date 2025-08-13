@@ -7,6 +7,8 @@
  "field_order": [
   "enabled",
   "connection_success",
+  "column_break_yyjn",
+  "cross_rate_conversion",
   "section_break_oovm",
   "api_provider",
   "api_key",
@@ -135,13 +137,24 @@
    "fieldtype": "Data",
    "label": "API Status",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_yyjn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "For use <b>ONLY</b> with the Open Exchange Rates <b>Free</b> plan. When enabled, this computes and stores cross-rates between all currencies in the \u201cTo Currency\u201d table by using <b>USD rates as a bridge</b>. <br>\nExample: If \"To Currency\" table has the currencies <b>EUR</b> and <b>AED</b>. Enabling this will also store <b>EUR\u2192AED</b> and <b>AED\u2192EUR</b>.",
+   "fieldname": "cross_rate_conversion",
+   "fieldtype": "Check",
+   "label": "Cross Exchange Rate Conversion Using USD"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-08-12 12:53:09.508372",
+ "modified": "2025-08-14 02:44:51.063952",
  "modified_by": "Administrator",
  "module": "Exchange Rate Sync",
  "name": "Exchange Rate Config",
