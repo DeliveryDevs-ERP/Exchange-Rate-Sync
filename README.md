@@ -20,7 +20,7 @@
 ### Prerequisites
 
 - Frappe Framework installed
-- API key from [Open Exchange Rates](https://  openexchangerates.org/)
+- API key from [Open Exchange Rates](https://openexchangerates.org/)
 
 
 ### Steps to Install
